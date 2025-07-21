@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.4.4
+    container_name: traefik-dev
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  service-a:
+    build: ./service-a
+    container_name: service-a-dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.service-a.rule=PathPrefix(`/service-a`)"
+      - "traefik.http.routers.service-a.entrypoints=web"
+      - "traefik.http.services.service-a.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.service-a-stripprefix.stripprefix.prefixes=/service-a"
+      - "traefik.http.routers.service-a.middlewares=service-a-stripprefix"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ui:
+    build: ./ui
+    container_name: ui-dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=PathPrefix(`/ui`)"
+      - "traefik.http.routers.ui.entrypoints=web"
+      - "traefik.http.services.ui.loadbalancer.server.port=3001"
+      - "traefik.http.middlewares.ui-stripprefix.stripprefix.prefixes=/ui"
+      - "traefik.http.routers.ui.middlewares=ui-stripprefix"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,40 @@
+http:
+  routers:
+    service-b:
+      rule: "PathPrefix(`/service-b`)"
+      service: "service-b"
+      entryPoints:
+        - "web"
+      middlewares:
+        - "service-b-stripprefix"
+    
+    # Internal routing for Service A to call Service B
+    service-b-internal:
+      rule: "PathPrefix(`/service-b-internal`)"
+      service: "service-b-internal"
+      entryPoints:
+        - "web"
+      middlewares:
+        - "service-b-internal-stripprefix"
+  
+  middlewares:
+    service-b-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/service-b"
+    
+    service-b-internal-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/service-b-internal"
+  
+  services:
+    service-b:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5001"
+    
+    service-b-internal:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5001"

@@ -1,0 +1,21 @@
+http:
+  routers:
+    service-b:
+      rule: "PathPrefix(`/service-b`)"
+      service: "service-b"
+      entryPoints:
+        - "web"
+      middlewares:
+        - "service-b-stripprefix"
+  
+  middlewares:
+    service-b-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/service-b"
+  
+  services:
+    service-b:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5001"
